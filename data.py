@@ -133,7 +133,7 @@ class BaseDataset(object):
         print(img_elem.attrib['name'])
         segments = []
         label = np.zeros_like(img, dtype=np.uint8)
-        instance_id = 0
+        instance_id = 12345
         for polygon_elem in img_elem.findall('./polygon'):
             seg = {}
             # Read and process class_name
