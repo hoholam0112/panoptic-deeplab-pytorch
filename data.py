@@ -32,7 +32,6 @@ def class_id_to_name(class_id):
     return _class_id_to_name[class_id]
 
 _ROAD_CONDITION_THINGS_LIST = sorted(list(_class_id_to_name.values()))
-print('_ROAD_CONDITION_THINGS_LIST') = _ROAD_CONDITION_THINGS_LIST
 
 class BaseDataset(object):
     def __init__(self,
