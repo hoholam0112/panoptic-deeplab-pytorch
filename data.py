@@ -76,7 +76,7 @@ class BaseDataset(object):
 
         self.pad_value = tuple([int(v * 255) for v in self.mean])
         self.ignore_label = 0
-        self.label_pad_value = (self.ignore_label, )
+        self.label_pad_value = (0, 0, 0)
 
         # Define instance variable
         self.rgb2id = rgb2id
