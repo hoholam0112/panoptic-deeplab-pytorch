@@ -162,7 +162,7 @@ class BaseDataset(object):
             segments.append(seg)
 
         img, label = self.transform(img, label)
-        sample['image'] = image
+        sample['image'] = img
         # Generate training target.
         if self.target_transform is not None:
             label_dict = self.target_transform(label, segments)
