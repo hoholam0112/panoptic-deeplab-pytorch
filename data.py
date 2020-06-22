@@ -10,50 +10,17 @@ from torchvision.transforms import functional as F
 import sys
 # sys.setrecursionlimit(10000)
 
-def get_image_id(file_path):
-    """ extract image id from file path """
-    return file_path.split('/')[-1].split('.')[0]
-
- def decode_polygon(polygon_str):
-    """ decode polygon string representation as np.array """
-    point_strs = polygon_str.split(';')
-    seq = []
-    for p in point_strs:
-        x , y = p.split(',')
-        seq.append([int(float(x)), int(float(y))])
-    return np.array(seq)
-
-def encode_polygon(points):
-    """ encode np.array points constructing polygon as a string """
-    pass
-
-
-def rgb2id(color):
-    """Converts the color to panoptic label.
-    Color is created by `color = [segmentId % 256, segmentId // 256, segmentId // 256 // 256]`.
-    Args:
-        color: Ndarray or a tuple, color encoded image.
-    Returns:
-        Panoptic label.
-    """
-    if isinstance(color, np.ndarray) and len(color.shape) == 3:
-        if color.dtype == np.uint8:
-            color = color.astype(np.int32)
-        return color[:, :, 0] + 256 * color[:, :, 1] + 256 * 256 * color[:, :, 2]
-    return int(color[0] + 256 * color[1] + 256 * 256 * color[2])
-    
-
-def id2rgb(id):
-    """ Encode instance id as RGB value """
-    assert isinstance(id, int)
+# Custom libs
+from transforms import build_transforms, PanopticTargetGenerator, SemanticTargetGenerator
+from utils import rgb2id, id2rgb, decode_polygon, encode_polygon
 
 # 21 classes. background = 0
-_class_name_to_id = {'sidewalk_blocks' : 1, 'alley_damaged' : 2, 'sidewalk_damaged' : 3, 
+_class_name_to_id = {'sidewalk_blocks' : 1, 'alley_damaged' : 2, 'sidewalk_damaged' : 3,
              'caution_zone_manhole': 4, 'braille_guide_blocks_damaged':5, 'alley_speed_bump':6,
              'roadway_crosswalk':7,'sidewalk_urethane':8, 'caution_zone_repair_zone':9,
              'sidewalk_asphalt':10, 'sidewalk_other':11, 'alley_crosswalk':12,
              'caution_zone_tree_zone':13, 'caution_zone_grating':14, 'roadway_normal':15,
-             'bike_lane':16, 'caution_zone_stairs':17, 'alley_normal':18, 
+             'bike_lane':16, 'caution_zone_stairs':17, 'alley_normal':18,
              'sidewalk_cement':19,'braille_guide_blocks_normal':20, 'sidewalk_soil_stone': 21}
 
 _class_id_to_name = {v:k for k,v in _class_name_to_id.items()}
@@ -63,6 +30,9 @@ def class_name_to_id(class_name):
 
 def class_id_to_name(class_id):
     return _class_id_to_name[class_id]
+
+_ROAD_CONDITION_THINGS_LIST = sorted(list(_class_id_to_name.values()))
+print('_ROAD_CONDITION_THINGS_LIST') = _ROAD_CONDITION_THINGS_LIST
 
 class BaseDataset(object):
     def __init__(self,
@@ -83,7 +53,7 @@ class BaseDataset(object):
         Arguments:
             root: Str, root directory.
             training: Bool, for training or testing.
-            crop_size: Tuple, crop size.
+            crop_size: Tuple, crop size. (height, width)
             mirror: Bool, whether to apply random horizontal flip.
             min_scale: Float, min scale in scale augmentation.
             max_scale: Float, max scale in scale augmentation.
@@ -96,49 +66,74 @@ class BaseDataset(object):
             small_instance_weight: Integer, indicates semantic loss weights for small instances.
         """
         self.root = root
-        self.transform = transform
         self.training = training # If training=False, target is None.
+        self.crop_h, self.crop_w = crop_size
+        self.mirror = mirror
+        self.min_scale = min_scale
+        self.max_scale = max_scale
+        self.scale_step_size = scale_step_size
+        self.mean = mean
+        self.std = std
+
+        self.pad_value = tuple([int(v * 255) for v in self.mean])
+        self.ignore_label = 0
+        self.label_pad_value = (self.ignore_label, )
+
+        # Define instance variable
+        self.rgb2id = rgb2id
+        self.id2rgb = id2rgb
+
         self.image_files = [] # list of file names
         self.image_elements = [] # image element in xml file
-        
         for d in sorted(os.listdir(self.root)):
             # collect image files
             files = sorted(glob(os.path.join(self.root, d, '*.jpg')))
             self.image_files += files
-            if training:
+            if self.training:
                 # read xml files and collect image elements
                 xml_path = glob(os.path.join(self.root, d, '*.xml'))[0]
                 root_element = elemTree.parse(xml_path)
                 image_elements = root_element.findall('./image')
                 self.image_elements += image_elements
-        if training:
-            self.target_transform = PanopticTargetGenerator(
-                self.ignore_label, self.rgb2id, _CITYSCAPES_THING_LIST,
-                sigma=8, ignore_stuff_in_offset=ignore_stuff_in_offset,
-                small_instance_area=small_instance_area,
-                small_instance_weight=small_instance_weight)
+
+        # Define transforms
+        self.transform = build_transforms(self, training)
+        if self.training:
+            if semantic_only:
+                self.target_transform = SemanticTargetGenerator(self.ignore_label, self.rgb2id)
+            else:
+                self.target_transform = PanopticTargetGenerator(
+                    self.ignore_label, self.rgb2id, _ROAD_CONDITION_THINGS_LIST,
+                    sigma=8, ignore_stuff_in_offset=ignore_stuff_in_offset,
+                    small_instance_area=small_instance_area,
+                    small_instance_weight=small_instance_weight)
         else:
             self.target_transform = None
-        
+
+
     def __getitem__(self, idx):
         # Read images and labels
         img_path = self.image_files[idx]
-        img = Image.open(img_path)
+        assert os.path.exists(img_path), 'Cannot find image files: {}'.format(img_path)
+        img = Image.open(img_path).convert('RGB')
         width, height = img.size
+        img = np.array(img, dtype=np.uint8)
         # to access image file name when evaluating
-        target = {}
-        target['dataset_index'] = torch.as_tensor(idx, dtype=torch.long)
-        
+        sample = {}
+        sample['dataset_index'] = torch.as_tensor(idx, dtype=torch.long)
+        sample['raw_size'] = (width, height)
+
         if not self.training:
-            return img, target
-        
+            img, _ = self.trasnform(img, None)
+            sample['image'] = img
+            return sample
+
+        # Read label
         img_elem = self.image_elements[idx]
-        
         print(img_path)
         print(img_elem.attrib['name'])
-        
         segments = []
-        panoptic = np.zeros_like(img, dtype=np.int32)
+        label = np.zeros_like(img, dtype=np.uint8)
         instance_id = 0
         for polygon_elem in img_elem.findall('./polygon'):
             seg = {}
@@ -161,92 +156,20 @@ class BaseDataset(object):
             # Encode instance id
             seg['id'] = instance_id
             rgb = id2rgb(instance_id) # encode instance id to RGB value 
-            cv2.fillPoly(panoptic, [points], rgb) # assing RGB value to panoptic
+            cv2.fillPoly(label, [points], rgb) # assing RGB value to label 
             instance_id += 1
             # Append seg to segments
             seg['iscrowd'] = False
             segments.append(seg)
-                
-            img, panoptic = self.transform(img, panoptic)
-        
-        
-        
-        return img, target
+
+        img, label = self.transform(img, label)
+        sample['image'] = image
+        # Generate training target.
+        if self.target_transform is not None:
+            label_dict = self.target_transform(label, segments)
+            sample.update(label_dict)
+        return sample
 
     def __len__(self):
-        return len(self.imgs)
-
-    
-    
-class Compose(object):
-    def __init__(self, transforms):
-        """ list of transform operations """
-        self.transforms = transforms
-
-    def __call__(self, image, target):
-        for t in self.transforms:
-            image, target = t(image, target)
-        return image, target
-
-
-class RandomHorizontalFlip(object):
-    def __init__(self, prob):
-        self.prob = prob
-
-    def __call__(self, image, target):
-        if random.random() < self.prob:
-            height, width = image.shape[-2:]
-            image = image.flip(-1)
-            bbox = target["boxes"]
-            bbox[:, [0, 2]] = width - bbox[:, [2, 0]]
-            target["boxes"] = bbox
-            if "masks" in target:
-                target["masks"] = target["masks"].flip(-1)
-        return image, target
-
-
-class ToTensor(object):
-    def __call__(self, image, target):
-        image = F.to_tensor(image)
-        return image, target
-    
-
-def get_transform(train):
-    transforms = []
-    transforms.append(T.ToTensor())
-    if train:
-        # (역자주: 학습시 50% 확률로 학습 영상을 좌우 반전 변환합니다)
-        transforms.append(T.RandomHorizontalFlip(0.3))
-    return T.Compose(transforms)
-                   
-def collate_fn(batch):
-    return tuple(zip(*batch))
-                   
-def get_transform(train):
-    transforms = []
-    transforms.append(ToTensor())
-    if train:
-        # (역자주: 학습시 50% 확률로 학습 영상을 좌우 반전 변환합니다)
-        transforms.append(RandomHorizontalFlip(0.5))
-    return Compose(transforms)
-                   
-def collate_fn(batch):
-    return tuple(zip(*batch))
-
-def make_dataset(root):
-    folder_list = glob(root+'/*')
-    dataset = BaseDataset(folder_list[0], get_transform(train=False))
-    for fpath in folder_list[1:]:
-        dataset_test = BaseDataset(fpath, get_transform(train=False))
-        dataset = torch.utils.data.ConcatDataset([dataset, dataset_test])
-    return dataset
-
-train_dir = './dataset/train'
-
-for d in sorted(os.listdir(train_dir)):
-    files = sorted(glob(os.path.join(train_dir, d, '*.jpg')))
-#     print(files)
-    print(get_image_id(files[0]))
-    break
-    #     self.image_files.append(files)
+        return len(self.image_files)
 
