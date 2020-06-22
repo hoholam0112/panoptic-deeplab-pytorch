@@ -18,8 +18,7 @@ def encode_polygon(points):
     pass
 
 def rgb2id(color):
-    """Converts the color to panoptic label.
-    Color is created by `color = [segmentId % 256, segmentId // 256, segmentId // 256 // 256]`.
+    """Converts the color encoding 256-base number to panoptic label.
     Args:
         color: Ndarray or a tuple, color encoded image.
     Returns:
@@ -32,11 +31,15 @@ def rgb2id(color):
     return int(color[0] + 256 * color[1] + 256 * 256 * color[2])
 
 def id2rgb(id):
-    """ Encode instance id as RGB value. """
+    """ Encode instance id as RGB value. 256-base number """
     assert isinstance(id, int)
     if id > 256**3 - 1:
-        raise ValueError('''Given id cannot be encoded without duplication.
-                It is larger than (256**3 - 1)''')
-    color = (id % 256, id // 256, id // 256 // 256)
-    return color
+        raise ValueError('''Given id excess range.
+                {} is larger than (256**3 - 1)'''.format(id))
+    b = id // 256 // 256
+    id -= b * 256 * 256
+    g = id // 256
+    id -= g * 256
+    r = id % 256
+    return (r, g, b)
 
