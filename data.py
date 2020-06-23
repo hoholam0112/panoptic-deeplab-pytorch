@@ -129,8 +129,8 @@ class BaseDataset(object):
 
         # Read label
         img_elem = self.image_elements[idx]
-        print(img_path)
-        print(img_elem.attrib['name'])
+        #print(img_path)
+        #print(img_elem.attrib['name'])
         segments = []
         label = np.zeros_like(img, dtype=np.uint8)
         instance_id = 12345
