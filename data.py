@@ -120,7 +120,7 @@ class BaseDataset(object):
         # to access image file name when evaluating
         sample = {}
         sample['dataset_index'] = torch.as_tensor(idx, dtype=torch.long)
-        sample['raw_size'] = (width, height)
+        sample['raw_size'] = torch.as_tensor(np.array([width, height]))
 
         if not self.training:
             img, _ = self.transform(img, None)
