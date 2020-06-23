@@ -123,7 +123,7 @@ class BaseDataset(object):
         sample['raw_size'] = (width, height)
 
         if not self.training:
-            img, _ = self.trasnform(img, None)
+            img, _ = self.transform(img, None)
             sample['image'] = img
             return sample
 
