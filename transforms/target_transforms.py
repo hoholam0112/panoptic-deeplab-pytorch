@@ -68,7 +68,6 @@ class PanopticTargetGenerator(object):
         semantic = np.zeros_like(panoptic, dtype=np.uint8) + self.ignore_label
         foreground = np.zeros_like(panoptic, dtype=np.uint8)
         center = np.zeros((1, height, width), dtype=np.float32)
-        center_pts = []
         offset = np.zeros((2, height, width), dtype=np.float32)
         y_coord = np.ones_like(panoptic, dtype=np.float32)
         x_coord = np.ones_like(panoptic, dtype=np.float32)
@@ -111,7 +110,6 @@ class PanopticTargetGenerator(object):
                     semantic_weights[panoptic == seg["id"]] = self.small_instance_weight
 
                 center_y, center_x = np.mean(mask_index[0]), np.mean(mask_index[1])
-                center_pts.append([center_y, center_x])
 
                 # generate center heatmap
                 y, x = int(center_y), int(center_x)
@@ -143,7 +141,6 @@ class PanopticTargetGenerator(object):
             semantic=torch.as_tensor(semantic.astype('long')),
             foreground=torch.as_tensor(foreground.astype('long')),
             center=torch.as_tensor(center.astype(np.float32)),
-            center_points=center_pts,
             offset=torch.as_tensor(offset.astype(np.float32)),
             semantic_weights=torch.as_tensor(semantic_weights.astype(np.float32)),
             center_weights=torch.as_tensor(center_weights.astype(np.float32)),
