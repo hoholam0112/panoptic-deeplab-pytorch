@@ -51,9 +51,9 @@ if __name__ == '__main__':
                           mean=cfg.DATASET.MEAN,
                           std=cfg.DATASET.STD,
                           semantic_only=cfg.DATASET.SEMANTIC_ONLY,
-                          ignore_stuff_in_offset=cfg.IGNORE_STUFF_IN_OFFSET,
-                          small_instance_area=cfg.SMALL_INSTANCE_AREA,
-                          small_instance_weight=cfg.SMALL_INSTANCE_WEIGHT)
+                          ignore_stuff_in_offset=cfg.DATASET.IGNORE_STUFF_IN_OFFSET,
+                          small_instance_area=cfg.DATASET.SMALL_INSTANCE_AREA,
+                          small_instance_weight=cfg.DATASET.SMALL_INSTANCE_WEIGHT)
 
     loader = torch.utils.data.DataLoader(
             dataset, batch_size=cfg.TRAIN.IMS_PER_BATCH,
