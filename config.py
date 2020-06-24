@@ -11,7 +11,7 @@ _C.WORKERS = 0
 # Logging frequency
 _C.PRINT_FREQ = 20
 # Checkpoint frequency
-_C.CKPT_FREQ = 5000
+_C.CKPT_FREQ = 2000
 
 # -----------------------------------------------------------------------------
 # Model
