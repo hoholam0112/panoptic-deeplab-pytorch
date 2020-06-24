@@ -167,7 +167,7 @@ if __name__ == '__main__':
                 # Print summary logs
                 if step % cfg.PRINT_FREQ == 0:
                     print('{:d}/{:d} -- {:d}s'.format(step, max_iter, int(time_meter.sum)))
-                    for k, v in model.loss_meter_dict.items()
+                    for k, v in model.loss_meter_dict.items():
                         print('{}: {.6f}  |  '.format(k, v.avg), end='')
                     print('')
                     time_meter.reset()
