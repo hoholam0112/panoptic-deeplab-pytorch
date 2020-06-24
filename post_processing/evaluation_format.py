@@ -75,7 +75,7 @@ def get_ins_list(semantic_pred,
         # get polygon from binary instance mask
         instance['mask'] = ins_mask.squeeze(0).cpu().numpy()
         # Compute confidence score
-        score = torch.mean(sem_soft.squeeze(0)[class_id][ins_mask])
+        score = torch.mean(sem_soft[:, class_id, :, :][ins_mask])
         instance['score'] = score.item()
         ins_list.append(instance)
 
