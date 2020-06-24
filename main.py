@@ -1,9 +1,10 @@
 """ panoptic-deeplab for road condition segmentation """
-import os, argparse
+import os, argparse, time
 import torch
 import numpy as np
 import random
 import glob
+from torch.utils.tensorboard import SummaryWriter
 
 # Custom libs
 from config import get_default_config
@@ -75,8 +76,8 @@ if __name__ == '__main__':
     # load checkpoint
     save_path = './checkpoint_dir'
     os.makedirs(save_path, exist_ok=True)
-    filename = config_file.split('/')[-1].split('.')[0]
-    save_path = os.path.join(save_path, filename)
+    config_filename = config_file.split('/')[-1].split('.')[0]
+    save_path = os.path.join(save_path, config_filename)
     save_list = glob.glob(save_path + '*')
     if len(save_list) == 0:
         save_path += '-0.pt'
@@ -125,11 +126,12 @@ if __name__ == '__main__':
     if training: # Train
         step = 0
         max_iter = cfg.TRAIN.MAX_ITER
+        writer = None
+
         optimizer = torch.optim.Adam(
                 model.parameters(), cfg.SOLVER.BASE_LR,
                 betas=cfg.SOLVER.ADAM_BETAS, eps=cfg.SOLVER.ADAM_EPS
             )
-        optimizer.to(device)
         # learning rate scheduler
         lr_scheduler = torch.optim.lr_scheduler.StepLR(
                 optimizer, step_size=cfg.SOLVER.STEPS, gamma=cfg.SOLVER.GAMMA
@@ -159,7 +161,7 @@ if __name__ == '__main__':
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-                lr_scheduler.step()
+                #lr_scheduler.step()
 
                 elapsed_time = time.time() - start_time # check elaped time
                 time_meter.update(elapsed_time)
@@ -168,9 +170,16 @@ if __name__ == '__main__':
                 if step % cfg.PRINT_FREQ == 0:
                     print('{:d}/{:d} -- {:d}s'.format(step, max_iter, int(time_meter.sum)))
                     for k, v in model.loss_meter_dict.items():
-                        print('{}: {.6f}  |  '.format(k, v.avg), end='')
+                        print('{}: {:.6f}  |  '.format(k, v.avg), end='')
                     print('')
                     time_meter.reset()
+                    # Tensorboard summary writer
+                    if writer is None:
+                        writer = SummaryWriter('./summary_dir/{}'.format(config_filename))
+                    for k, v in model.loss_meter_dict.items():
+                        writer.add_scalar('Loss/{}'.format(k), v.avg, step)
+                    writer.flush()
+
                 # Save model
                 if step % cfg.CKPT_FREQ == 0:
                     save(save_path, model, optimizer, lr_scheduler, step)
@@ -178,6 +187,7 @@ if __name__ == '__main__':
 
             except StopIteration:
                 iterator = iter(loader)
+        writer.close()
     else: # Test
         raise NotImplementedError('test part is not implemented yet.')
 
