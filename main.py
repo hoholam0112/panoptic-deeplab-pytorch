@@ -76,7 +76,7 @@ if __name__ == '__main__':
     save_path = './checkpoint_dir'
     os.makedirs(save_path, exist_ok=True)
     filename = config_file.split('/')[-1].split('.')[0]
-    save_path = os.path.join(checkpoint_dir, filename)
+    save_path = os.path.join(save_path, filename)
     save_list = glob.glob(save_path + '*')
     if len(save_list) == 0:
         save_path += '-0.pt'
