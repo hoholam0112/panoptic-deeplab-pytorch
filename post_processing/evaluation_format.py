@@ -33,8 +33,10 @@ def get_ins_list(sem_pred,
     assert center_pred.dim() == 4 and center_pred.size(0) == 1
     assert offset_pred.dim() == 4 and offset_pred.size(0) == 1
 
-    # sem_pred [1, C, H, W] -> sem_hard [1, H, W]
-    sem_hard = get_semantic_segmentation(sem_pred)
+    sem_soft = F.softmax(sem_pred, dim=1) # normalize prediction scores
+
+    # sem_soft [1, C, H, W] -> sem_hard [1, H, W]
+    sem_hard = get_semantic_segmentation(sem_soft)
     ins_seg, center_points = get_instance_segmentation(
             sem_hard, center_pred, offset_pred, thing_list,
             threshold, nms_kernel, top_k)
@@ -53,7 +55,7 @@ def get_ins_list(sem_pred,
         # get polygon from binary instance mask
         instance['mask'] = ins_mask.squeeze(0).cpu().numpy()
         # Compute confidence score
-        score_sum = torch.sum(sem_pred[:, class_id, :, :]*ins_mask)
+        score_sum = torch.sum(sem_soft[:, class_id, :, :]*ins_mask)
         score_mean = score_sum/torch.sum(ins_mask)
         instance['score'] = score_mean.item()
         ins_list.append(instance)
