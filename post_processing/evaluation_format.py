@@ -10,7 +10,6 @@ def get_ins_list(sem_pred,
                  center_pred,
                  offset_pred,
                  thing_list,
-                 image_size=(1080, 1920),
                  threshold=0.1,
                  nms_kernel=7,
                  top_k=None):
@@ -20,7 +19,6 @@ def get_ins_list(sem_pred,
         center_pred: tensor of size [1, 1, H, W]. center heatmap prediction.
         offset_pred: tensor of size [1, 2, H, W]. offset prediction.
         thing_list: List of thing class ids (int). things can be instance and belongs to foregound.
-        image_size: (height, width). standard size of image for evaluation.
         threshold: float. threshold for center_pred activation.
         nms_kernel: int. max pooling kernel size for filtering center activations.
         top_k: int. number of center points to be preserved from predicted center heatmap.
@@ -34,24 +32,6 @@ def get_ins_list(sem_pred,
     assert sem_pred.dim() == 4 and sem_pred.size(0) == 1
     assert center_pred.dim() == 4 and center_pred.size(0) == 1
     assert offset_pred.dim() == 4 and offset_pred.size(0) == 1
-
-    # Resize prediction maps for evaluation 
-    h, w = image_size
-    if h != sem_pred.size(2) or w != sem_pred.size(3):
-        sem_pred = F.interpolate(
-                sem_pred, size=(h, w),
-                mode='bilinear', align_corners=False
-            )
-    if h != center_pred.size(2) or w != center_pred.size(3):
-        center_pred = F.interpolate(
-                center_pred, size=(h, w),
-                mode='bilinear', align_corners=False
-            )
-    if h != offset_pred.size(2) or w != offset_pred.size(3):
-        offset_pred = F.interpolate(
-                offset_pred, size=(h, w),
-                mode='bilinear', align_corners=False
-            )
 
     # sem_pred [1, C, H, W] -> sem_hard [1, H, W]
     sem_hard = get_semantic_segmentation(sem_pred)
