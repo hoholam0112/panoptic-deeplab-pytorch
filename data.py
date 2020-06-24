@@ -25,13 +25,17 @@ _class_name_to_id = {'sidewalk_blocks' : 1, 'alley_damaged' : 2, 'sidewalk_damag
 
 _class_id_to_name = {v:k for k,v in _class_name_to_id.items()}
 
+_ROAD_CONDITION_THINGS_LIST = sorted(list(_class_name_to_id.values()))
+
 def class_name_to_id(class_name):
     return _class_name_to_id[class_name]
 
 def class_id_to_name(class_id):
     return _class_id_to_name[class_id]
 
-_ROAD_CONDITION_THINGS_LIST = sorted(list(_class_name_to_id.values()))
+def get_thing_list():
+    return _ROAD_CONDITION_THINGS_LIST
+
 
 class BaseDataset(object):
     def __init__(self,
