@@ -1,5 +1,6 @@
 """ function to process model output for evaluation format """
 import numpy as np
+import torch
 import torch.nn.functional as F
 
 from .semantic_post_processing import get_semantic_segmentation
@@ -34,16 +35,25 @@ def get_ins_list(semantic_pred,
         AssertionError: check prediction maps' dimension.
     """
     # Check argument validity
-    assert semantic_pred.dim() == 4
-    assert center_pred.dim() == 4
-    assert offset_pred.dim() == 4
+    assert semantic_pred.dim() == 4 and semantic_pred.size(0) == 1
+    assert center_pred.dim() == 4 and center_pred.size(0) == 1
+    assert offset_pred.dim() == 4 and offset_pred.size(0) == 1
 
     sem_soft = F.softmax(semantic_pred, dim=1) # Normalize prediction scores
     # Resize prediction maps for evaluation 
     h, w = image_size
-    sem_soft = F.interpolate(sem_soft, size=(h, w), mode='bilinear')
-    ctr_hmp = F.interpolate(center_pred, size=(h, w), mode='bilinear')
-    off = F.interpolate(offset_pred, size=(h, w), mode='bilinear')
+    sem_soft = F.interpolate(
+            sem_soft, size=(h, w),
+            mode='bilinear', align_corners=False
+        )
+    ctr_hmp = F.interpolate(
+            center_pred, size=(h, w),
+            mode='bilinear', align_corners=False
+        )
+    off = F.interpolate(
+            offset_pred, size=(h, w),
+            mode='bilinear', align_corners=False
+        )
 
     # sem_soft [1, C, H, W] -> sem_hard [1, H, W]
     sem_hard = get_semantic_segmentation(sem_soft)
