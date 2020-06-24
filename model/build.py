@@ -6,7 +6,7 @@
 import torch
 
 from .backbone import resnet, mobilenet, mnasnet
-from .meta_arch import DeepLabV3, DeepLabV3Plus, PanopticDeepLab
+from .meta_arch import PanopticDeepLab
 from .loss import RegularCE, OhemCE, DeepLabCE, L1Loss, MSELoss, CrossEntropyLoss
 
 
@@ -19,35 +19,10 @@ def build_segmentation_model_from_cfg(config):
         A nn.Module segmentation model.
     """
     model_map = {
-        'deeplabv3': DeepLabV3,
-        'deeplabv3plus': DeepLabV3Plus,
         'panoptic_deeplab': PanopticDeepLab,
     }
 
     model_cfg = {
-        'deeplabv3': dict(
-            replace_stride_with_dilation=config.MODEL.BACKBONE.DILATION,
-            in_channels=config.MODEL.DECODER.IN_CHANNELS,
-            feature_key=config.MODEL.DECODER.FEATURE_KEY,
-            decoder_channels=config.MODEL.DECODER.DECODER_CHANNELS,
-            atrous_rates=config.MODEL.DECODER.ATROUS_RATES,
-            num_classes=config.DATASET.NUM_CLASSES,
-            semantic_loss=build_loss_from_cfg(config.LOSS.SEMANTIC),
-            semantic_loss_weight=config.LOSS.SEMANTIC.WEIGHT,
-        ),
-        'deeplabv3plus': dict(
-            replace_stride_with_dilation=config.MODEL.BACKBONE.DILATION,
-            in_channels=config.MODEL.DECODER.IN_CHANNELS,
-            feature_key=config.MODEL.DECODER.FEATURE_KEY,
-            low_level_channels=config.MODEL.DEEPLABV3PLUS.LOW_LEVEL_CHANNELS,
-            low_level_key=config.MODEL.DEEPLABV3PLUS.LOW_LEVEL_KEY,
-            low_level_channels_project=config.MODEL.DEEPLABV3PLUS.LOW_LEVEL_CHANNELS_PROJECT,
-            decoder_channels=config.MODEL.DECODER.DECODER_CHANNELS,
-            atrous_rates=config.MODEL.DECODER.ATROUS_RATES,
-            num_classes=config.DATASET.NUM_CLASSES,
-            semantic_loss=build_loss_from_cfg(config.LOSS.SEMANTIC),
-            semantic_loss_weight=config.LOSS.SEMANTIC.WEIGHT,
-        ),
         'panoptic_deeplab': dict(
             replace_stride_with_dilation=config.MODEL.BACKBONE.DILATION,
             in_channels=config.MODEL.DECODER.IN_CHANNELS,
