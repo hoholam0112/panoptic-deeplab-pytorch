@@ -64,9 +64,14 @@ if __name__ == '__main__':
     model = build_segmentation_model_from_cfg(cfg)
     model.to(device)
 
+    # Trainig loop
     iterator = iter(loader)
     batch = next(iterator)
-    print(batch[''])
+    image = batch['image'].to(device)
+    target_keys = ['semantic', 'semantic_weights',
+                   'center', 'center_weights',
+                   'offset', 'offset_weights']
+    targets = {k : batch[k].to(device) for k in target_keys}
 
 
 
