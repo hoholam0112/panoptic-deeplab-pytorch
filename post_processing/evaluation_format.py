@@ -42,23 +42,26 @@ def get_ins_list(semantic_pred,
     sem_soft = F.softmax(semantic_pred, dim=1) # Normalize prediction scores
     # Resize prediction maps for evaluation 
     h, w = image_size
-    sem_soft = F.interpolate(
-            sem_soft, size=(h, w),
-            mode='bilinear', align_corners=False
-        )
-    ctr_hmp = F.interpolate(
-            center_pred, size=(h, w),
-            mode='bilinear', align_corners=False
-        )
-    off = F.interpolate(
-            offset_pred, size=(h, w),
-            mode='bilinear', align_corners=False
-        )
+    if h != sem_soft.size(2) or w != sem_soft.size(3):
+        sem_soft = F.interpolate(
+                sem_soft, size=(h, w),
+                mode='bilinear', align_corners=False
+            )
+    if h != center_pred.size(2) or w != center_pred.size(3):
+        center_pred = F.interpolate(
+                center_pred, size=(h, w),
+                mode='bilinear', align_corners=False
+            )
+    if h != offset_pred.size(2) or w != offset_pred.size(3):
+        offset_pred = F.interpolate(
+                offset_pred, size=(h, w),
+                mode='bilinear', align_corners=False
+            )
 
     # sem_soft [1, C, H, W] -> sem_hard [1, H, W]
     sem_hard = get_semantic_segmentation(sem_soft)
     ins_seg, center_points = get_instance_segmentation(
-            sem_hard, ctr_hmp, off, thing_list,
+            sem_hard, center_pred, offset_pred, thing_list,
             threshold, nms_kernel, top_k)
 
     # select instance's class label by majority bote.
@@ -73,7 +76,7 @@ def get_ins_list(semantic_pred,
         class_id, _ = torch.mode(sem_hard[ins_mask].view(-1, ))
         instance['class_id'] = class_id.item()
         # get polygon from binary instance mask
-        instance['mask'] = ins_mask.squeeze(0).cpu().numpy()
+        instance['mask'] = ins_mask.squeeze(0).detach().cpu().numpy()
         # Compute confidence score
         score = torch.mean(sem_soft[:, class_id, :, :][ins_mask])
         instance['score'] = score.item()
