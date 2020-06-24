@@ -76,7 +76,7 @@ def get_ins_list(semantic_pred,
         instance['mask'] = ins_mask.squeeze(0).cpu().numpy()
         # Compute confidence score
         instance['score'] = torch.mean(sem_soft.squeeze(0)[class_id]).item()
-        ins_list.apppend(instance)
+        ins_list.append(instance)
 
     if not ins_list:
         raise RuntimeError('mage has no detected instance.')
