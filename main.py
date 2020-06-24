@@ -20,7 +20,7 @@ def save(save_path, model, optimizer, lr_scheduler, step):
                   'step' : step}
     # change postfix before saving
     new_save_path = save_path.split('-')[0] + '-{:d}.pt'.format(step)
-    torch.save(checkpoint, save_path)
+    torch.save(checkpoint, new_save_path)
 
 def load(checkpoint, model, optimizer=None, lr_scheduler=None):
     """ Load checkpoint """
