@@ -1,1 +1,1 @@
-from .panopitc_deeplab import PanopticDeepLab
+from .panoptic_deeplab import PanopticDeepLab
