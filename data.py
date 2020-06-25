@@ -26,6 +26,7 @@ _class_name_to_id = {'sidewalk_blocks' : 1, 'alley_damaged' : 2, 'sidewalk_damag
 _class_id_to_name = {v:k for k,v in _class_name_to_id.items()}
 
 _ROAD_CONDITION_THINGS_LIST = sorted(list(_class_name_to_id.values()))
+_LABEL_DIVISOR = 10000
 
 def class_name_to_id(class_name):
     return _class_name_to_id[class_name]
@@ -36,6 +37,8 @@ def class_id_to_name(class_id):
 def get_thing_list():
     return _ROAD_CONDITION_THINGS_LIST
 
+def get_label_divisor():
+    return _LABEL_DIVISOR
 
 class BaseDataset(object):
     def __init__(self,
@@ -150,14 +153,8 @@ class BaseDataset(object):
             # Read and decode polygon string to np.array
             polygon_str = polygon_elem.attrib['points']
             points = decode_polygon(polygon_str)
-            # Bounding box
-            x1 = np.min(points[:, 0])
-            y1 = np.min(points[:, 1])
-            x2 = np.max(points[:, 0])
-            y2 = np.max([points[:, 1]])
-            seg['bbox'] = [x1, y1, x2, y2]
             # Encode instance id
-            seg['id'] = instance_id
+            seg['id'] = seg['category_id']*_LABEL_DIVISOR + instance_id
             rgb = id2rgb(instance_id) # encode instance id to RGB value 
             cv2.fillPoly(label, [points], rgb) # assing RGB value to label 
             instance_id += 1
