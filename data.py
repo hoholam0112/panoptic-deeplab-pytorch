@@ -97,13 +97,13 @@ class BaseDataset(object):
             self.image_files += files
 
         if self.training:
-            if os.path.exists(self.mask_dir):
+            if not os.path.isdir(self.mask_dir):
                 raise FileNotFoundError('Mask directory is not found: {}'.format(self.mask_dir))
             self.mask_files = [] # mask file list 
             for d in sorted(os.listdir(self.mask_dir)):
                 # collect image files
                 files = sorted(glob(os.path.join(self.mask_dir, d, '*.png')))
-                self.image_files += files
+                self.mask_files += files
 
             if len(self.image_files) != len(self.mask_files):
                 raise RuntimeError('''number of mask files is different from that of image files.
@@ -145,12 +145,13 @@ class BaseDataset(object):
         mask_path = self.mask_files[idx]
         assert os.path.exists(mask_path), 'Cannot find mask file: {}'.format(mask_path)
         mask = Image.open(mask_path).convert('RGB')
+        mask = np.array(mask, dypte=np.unit8)
 
         img, label = self.transform(img, mask)
         sample['image'] = img
         # Generate training target.
         if self.target_transform is not None:
-            label_dict = self.target_transform(label, mask, _LABEL_DIVISOR)
+            label_dict = self.target_transform(label, _LABEL_DIVISOR)
             sample.update(label_dict)
         return sample
 
