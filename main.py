@@ -5,12 +5,15 @@ import numpy as np
 import random
 import glob
 from torch.utils.tensorboard import SummaryWriter
+from imantics import Mask
+import xml.etree.ElementTree as elemTree
 
 # Custom libs
 from config import get_default_config
-from data import BaseDataset
+from data import BaseDataset, get_thing_list, class_id_to_name
 from model import build_segmentation_model_from_cfg
-from utils import AverageMeter
+from utils import AverageMeter, get_image_id, points_to_str
+from post_processing import get_ins_list
 
 def save(save_path, model, optimizer, lr_scheduler, step):
     """ save training state as checkpoint file """
@@ -36,14 +39,12 @@ if __name__ == '__main__':
     parser.add_argument('--config_file', help='.yaml file path for configuration.')
     parser.add_argument('--resume', help='whether to resume train.', action='store_true')
     parser.add_argument('--test', help='whether to train or test.', action='store_true')
-    parser.add_argument('--output_path', help='When test is True, path of prediction xml file.')
     args = parser.parse_args()
 
     root_dir = args.root_dir
     config_file = args.config_file
     resume = args.resume
     test = args.test
-    output_path = args.output_path
 
     # Load and update configuration 
     cfg = get_default_config()
@@ -66,8 +67,6 @@ if __name__ == '__main__':
     training = True
     if test:
         training = False
-        if output_path is None:
-            raise ValueError('output_path should be passed when test is True.')
     # set batch_size
     batch_size = 1
     if training:
@@ -184,12 +183,77 @@ if __name__ == '__main__':
                 if step % cfg.CKPT_FREQ == 0:
                     save(save_path, model, optimizer, lr_scheduler, step)
                     print('model saved.')
-
             except StopIteration:
                 iterator = iter(loader)
         writer.close()
     else: # Test
-        raise NotImplementedError('test part is not implemented yet.')
+        load(checkpoint, model) # Load saved model
+        pred_xml = elemTree.Element('predictions') # .xml file to save prediction
+        pred_xml.text = '\n  '
+        model.eval()
+        start_time = time.time()
+        for i, batch in enumerate(iterator):
+            with torch.no_grad():
+                image = batch['image'].to(device)
+                output = model(image)
 
+                sem_pred = output['semantic'].to(device)
+                center_pred = output['center'].to(device)
+                offset_pred = output['offset'].to(device)
+
+                # Removing padding
+                height, width = sem_pred.shape[2:]
+                sem_pred = sem_pred[:,:,:height-1,:width-1]
+                center_pred = center_pred[:,:,:height-1,:width-1]
+                offset_pred = offset_pred[:,:,:height-1,:width-1]
+
+                # Get instance list
+                ins_list = get_ins_list(
+                        sem_pred=sem_pred,
+                        center_pred=center_pred,
+                        offset_pred=offset_pred,
+                        thing_list=get_thing_list(),
+                        threshold=cfg.POST_PROCESSING.CENTER_THRESHOLD,
+                        nms_kernel=cfg.POST_PROCESSING.NMS_KERNEL,
+                        top_k=cfg.POST_PROCESSING.TOP_K_INSTANCE
+                    )
+
+            idx = batch['dataset_index'].squeeze(0).item()
+            image_id = get_image_id(dataset.image_files[idx])
+            print(image_id)
+            # Create sub-element image 
+            xml_image = elemTree.SubElement(pred_xml, 'image')
+            xml_image.attrib['name'] = image_id
+            xml_image.text = '\n    '
+            # Write detected instance in .xml file 
+            for j, ins in enumerate(ins_list):
+                # Creatae sub-element predict 
+                xml_predict = elemTree.SubElement(xml_image, 'predict')
+                xml_predict.tail = '\n    '
+                xml_predict.attrib['class_name'] = class_id_to_name(ins['class_id'])
+                mask = ins['mask']
+                print(mask.shape)
+                # binary mask to polygons
+                points = Mask(mask).polygons().points[0]
+                points_str = points_to_str(points)
+                xml_predict.attrib['polygon'] = points_str
+                xml_predict.attrib['score'] = str(float(ins['score']))
+                if j == len(ins_list) - 1:
+                    xml_predict.tail = '\n  '
+            xml_image.tail = '\n  '
+            if i == len(dataset) - 1:
+                xml_image.tail = '\n'
+
+            elapsed_time = time.time() - start_time
+            print('{:05d}/{:05d} -- {:d}s\r'.format(i+1, len(dataset), int(elapsed_time)), end='')
+        print('')
+
+        pred_xml = elemTree.ElementTree(pred_xml)
+        split = root_dir.split('/')[-1]
+        output_dir = './predictions/{}/{}'.format(split, config_filename)
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(output_dir, 'pred-{:05d}.xml'.format(checkpoint['step']))
+        pred_xml.write(output_path)
+        print('xml file is saved at: {}'.format(output_path))
 
 
