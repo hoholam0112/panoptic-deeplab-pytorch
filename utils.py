@@ -1,5 +1,23 @@
 import numpy as np
 
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count if self.count != 0 else 0
+
+
 def get_image_id(file_path):
     """ extract image id from file path """
     return file_path.split('/')[-1].split('.')[0]
@@ -13,9 +31,12 @@ def decode_polygon(polygon_str):
         seq.append([int(float(x)), int(float(y))])
     return np.array(seq)
 
-def encode_polygon(points):
-    """ encode np.array points constructing polygon as a string """
-    pass
+def points_to_str(points):
+    """ encode point list to as a string """
+    polygon_str = ''
+    for p in points:
+        polygon_str += str(p[0]) + ',' + str(p[1]) +';'
+    return polygon_str
 
 def rgb2id(color):
     """Converts the color encoding 256-base number to panoptic label.
@@ -43,29 +64,3 @@ def id2rgb(id):
     r = id % 256
     return (r, g, b)
 
-class AverageMeter(object):
-    """Computes and stores the average and current value"""
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count if self.count != 0 else 0
-
-
-def get_loss_info_str(loss_meter_dict):
-    msg = ''
-    for key in loss_meter_dict.keys():
-        msg += '{name}: {meter.val:.3e} ({meter.avg:.3e})\t'.format(
-            name=key, meter=loss_meter_dict[key]
-        )
-
-    return msg
