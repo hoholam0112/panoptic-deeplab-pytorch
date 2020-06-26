@@ -11,7 +11,6 @@ import numpy as np
 from torchvision.transforms import functional as F
 import torchvision
 
-
 class Compose(object):
     """
     Composes a sequence of transforms.
@@ -174,9 +173,15 @@ class RandomHorizontalFlip(object):
 
 class ColorJitter():
     def __init__(self, brightness=0.2, saturation=1):
-        self.color_jitter = ColorJitter(
-                brightness=brightness, saturation=saturation)
+        self.brightness = brightness
+        self.saturation = saturation
     def __call__(self, image, label):
        image = self.color_jitter(image)
+       brightness = random.uniform(
+               max(0, 1.0 - self.brightness), 1 + self.brightness)
+       saturation = random.uniform(
+               max(0, 1.0 - self.saturation), 1 + self.saturation)
+       image = F.adjust_brightness(image, brightness)
+       image = F.adjust_saturation(image, saturation)
        return image, label
 

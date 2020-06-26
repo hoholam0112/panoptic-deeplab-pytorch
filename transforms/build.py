@@ -29,7 +29,7 @@ def build_transforms(dataset, is_train=True):
                              ignore_label,
                              random_pad=is_train),
                 T.RandomHorizontalFlip(flip_prob),
-                T.ColorJitter()
+                T.ColorJitter(),
                 T.ToTensor(),
                 T.Normalize(mean,
                             std)

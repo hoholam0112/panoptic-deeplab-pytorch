@@ -114,7 +114,7 @@ class BaseDataset(object):
             self.target_transform = None
 
     def resize(self, image, label=None):
-	""" resize image and label """
+        """ resize image and label """
         image_dtype = image.dtype
         image = cv2.resize(image.astype(np.float),
                 (self.crop_w, self.crop_h), interpolation=cv2.INTER_LINEAR)
@@ -177,7 +177,7 @@ class BaseDataset(object):
             seg['iscrowd'] = False
             segments.append(seg)
 
-        img, iabel = self.resize(img, label)
+        img, label = self.resize(img, label)
         img, label = self.transform(img, label)
         sample['image'] = img
         # Generate training target.
