@@ -5,7 +5,6 @@
 
 from . import transforms as T
 
-
 def build_transforms(dataset, is_train=True):
     min_scale = dataset.min_scale
     max_scale = dataset.max_scale
@@ -30,6 +29,7 @@ def build_transforms(dataset, is_train=True):
                              ignore_label,
                              random_pad=is_train),
                 T.RandomHorizontalFlip(flip_prob),
+                T.ColorJitter()
                 T.ToTensor(),
                 T.Normalize(mean,
                             std)

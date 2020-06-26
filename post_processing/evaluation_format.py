@@ -23,8 +23,9 @@ def get_ins_list(sem_pred,
         nms_kernel: int. max pooling kernel size for filtering center activations.
         top_k: int. number of center points to be preserved from predicted center heatmap.
     Returns:
-        eval_format: list of dictionary. e.g.
+        ins_list: list of dictionary. e.g.
             {'class_id': 13, 'mask': nparray of size (h, w) , 'score': 0.9876}
+        center_points: list of center points
     Raises:
         AssertionError: check prediction maps' dimension.
     """
@@ -62,4 +63,4 @@ def get_ins_list(sem_pred,
 
     if not ins_list:
         raise RuntimeError('mage has no detected instance.')
-    return ins_list
+    return ins_list, center_points

@@ -93,9 +93,9 @@ def get_instance_segmentation(sem_seg, ctr_hmp, offsets, thing_list, threshold=0
     Post-processing for instance segmentation, gets class agnostic instance id map.
     Arguments:
         sem_seg: A Tensor of shape [1, H, W], predicted semantic label.
-        ctr_hmp: A Tensor of shape [N, 1, H, W] of raw center heatmap output, where N is the batch size,
+        ctr_hmp: A Tensor of shape [1, 1, H, W] of raw center heatmap output, where N is the batch size,
             for consistent, we only support N=1.
-        offsets: A Tensor of shape [N, 2, H, W] of raw offset output, where N is the batch size,
+        offsets: A Tensor of shape [1, 2, H, W] of raw offset output, where N is the batch size,
             for consistent, we only support N=1. The order of second dim is (offset_y, offset_x).
         thing_list: A List of thing class id.
         threshold: A Float, threshold applied to center heatmap score.

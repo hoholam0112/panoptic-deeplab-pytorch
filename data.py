@@ -11,8 +11,9 @@ import sys
 # sys.setrecursionlimit(10000)
 
 # Custom libs
-from transforms import build_transforms, PanopticTargetGenerator, SemanticTargetGenerator
-from utils import rgb2id, id2rgb, decode_polygon, encode_polygon
+from transforms import build_transforms, PanopticTargetGenerator,\
+	SemanticTargetGenerator
+from utils import rgb2id, id2rgb, decode_polygon
 
 # 21 classes. background = 0
 _CLASS_NAME_TO_ID = {'sidewalk_blocks' : 1, 'alley_damaged' : 2, 'sidewalk_damaged' : 3,
@@ -40,7 +41,7 @@ class BaseDataset(object):
     def __init__(self,
                  root,
                  training=True,
-                 crop_size=(1081, 1921),
+                 crop_size=(512, 1024),
                  mirror=True,
                  min_scale=0.5,
                  max_scale=2.,
@@ -112,6 +113,17 @@ class BaseDataset(object):
         else:
             self.target_transform = None
 
+    def resize(self, image, label=None):
+	""" resize image and label """
+        image_dtype = image.dtype
+        image = cv2.resize(image.astype(np.float),
+                (self.crop_w, self.crop_h), interpolation=cv2.INTER_LINEAR)
+        if label is None:
+            return image, label
+        label_dtype = label.dtype
+        label = cv2.resize(label.astype(np.float),
+                (self.crop_w, self.crop_h), interpolation=cv2.INTER_NEAREST)
+        return image.astype(image_dtype), label.astype(label_dtype)
 
     def __getitem__(self, idx):
         # Read images and labels
@@ -126,6 +138,7 @@ class BaseDataset(object):
         sample['raw_size'] = torch.as_tensor(np.array([width, height]))
 
         if not self.training:
+            img, _ = self.resize(img, None)
             img, _ = self.transform(img, None)
             sample['image'] = img
             return sample
@@ -164,6 +177,7 @@ class BaseDataset(object):
             seg['iscrowd'] = False
             segments.append(seg)
 
+        img, iabel = self.resize(img, label)
         img, label = self.transform(img, label)
         sample['image'] = img
         # Generate training target.

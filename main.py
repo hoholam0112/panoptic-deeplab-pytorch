@@ -192,26 +192,16 @@ if __name__ == '__main__':
         pred_xml.text = '\n  '
         model.eval()
         start_time = time.time()
-        for i, batch in enumerate(iterator):
+        for i, batch in enumerate(loader):
             with torch.no_grad():
                 image = batch['image'].to(device)
                 output = model(image)
 
-                sem_pred = output['semantic'].to(device)
-                center_pred = output['center'].to(device)
-                offset_pred = output['offset'].to(device)
-
-                # Removing padding
-                height, width = sem_pred.shape[2:]
-                sem_pred = sem_pred[:,:,:height-1,:width-1]
-                center_pred = center_pred[:,:,:height-1,:width-1]
-                offset_pred = offset_pred[:,:,:height-1,:width-1]
-
                 # Get instance list
                 ins_list = get_ins_list(
-                        sem_pred=sem_pred,
-                        center_pred=center_pred,
-                        offset_pred=offset_pred,
+                        sem_pred=output['semantic'].to(device),
+                        center_pred=output['center'].to(device),
+                        offset_pred=output['offset'].to(device),
                         thing_list=get_thing_list(),
                         threshold=cfg.POST_PROCESSING.CENTER_THRESHOLD,
                         nms_kernel=cfg.POST_PROCESSING.NMS_KERNEL,
@@ -245,7 +235,7 @@ if __name__ == '__main__':
                 xml_image.tail = '\n'
 
             elapsed_time = time.time() - start_time
-            print('{:05d}/{:05d} -- {:d}s\r'.format(i+1, len(dataset), int(elapsed_time)), end='')
+            print('\r{:05d}/{:05d} -- {:d}s'.format(i+1, len(dataset), int(elapsed_time)), end='')
         print('')
 
         pred_xml = elemTree.ElementTree(pred_xml)

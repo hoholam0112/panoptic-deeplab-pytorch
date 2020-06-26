@@ -17,7 +17,6 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count if self.count != 0 else 0
 
-
 def get_image_id(file_path):
     """ extract image id from file path """
     return file_path.split('/')[-1].split('.')[0]

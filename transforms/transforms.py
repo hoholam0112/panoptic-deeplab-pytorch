@@ -9,6 +9,7 @@ import random
 import cv2
 import numpy as np
 from torchvision.transforms import functional as F
+import torchvision
 
 
 class Compose(object):
@@ -170,3 +171,12 @@ class RandomHorizontalFlip(object):
             image = image[:, ::-1].copy()
             label = label[:, ::-1].copy()
         return image, label
+
+class ColorJitter():
+    def __init__(self, brightness=0.2, saturation=1):
+        self.color_jitter = ColorJitter(
+                brightness=brightness, saturation=saturation)
+    def __call__(self, image, label):
+       image = self.color_jitter(image)
+       return image, label
+

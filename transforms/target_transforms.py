@@ -80,7 +80,7 @@ class PanopticTargetGenerator(object):
         # (1) It is labeled as `ignore_label`
         # (2) It is crowd region (iscrowd=1)
         # (3) (Optional) It is stuff region (for offset branch)
-        center_weights = np.zeros_like(panoptic, dtype=np.uint8)
+        center_weights = np.ones_like(panoptic, dtype=np.uint8) # background region is considered 
         offset_weights = np.zeros_like(panoptic, dtype=np.uint8)
         for seg in segments:
             cat_id = seg["category_id"]
@@ -90,7 +90,6 @@ class PanopticTargetGenerator(object):
             if not seg['iscrowd']:
                 # Ignored regions are not in `segments`.
                 # Handle crowd region.
-                center_weights[panoptic == seg["id"]] = 1
                 if self.ignore_stuff_in_offset:
                     # Handle stuff region.
                     if cat_id in self.thing_list:
