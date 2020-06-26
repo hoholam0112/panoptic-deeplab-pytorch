@@ -4,6 +4,8 @@ from glob import glob
 from PIL import Image
 import numpy as np
 import cv2
+import xml.etree.ElementTree as elemTree
+from utils import id2rgb, decode_polygon
 
 # Custom
 from data import get_label_divisor, class_name_to_id
@@ -32,20 +34,6 @@ def create_mask(img, img_elem, label_divisor):
         instance_id += 1
     return mask
 
-def create_segments(mask, label_divisor, rgb2id):
-    segments = []
-    mask_id = rgb2id(mask)
-    panoptic_ids = np.unique(mask_id)
-    for panoptic_id in panoptic_ids:
-        seg = {}
-        seg['category_id'] = panoptic_id // label_divisor
-        # Encode instance id
-        seg['id'] = panoptic_id % label_divisor
-        # Append seg to segments
-        seg['iscrowd'] = False
-        segments.append(seg)
-    return segments
-
 def main():
     """ Generate mask to make label reading process faster, which results in fast training.
         panoptic_id = class_id * label_divisor + instance_id as 256-base number.
@@ -54,10 +42,10 @@ def main():
     image_files = [] # list of file names
     image_elements = []
     for d in sorted(os.listdir(_ROOT_DIR)):
-        files = sorted(glob(os.path.join(root, d, '*.jpg')))
+        files = sorted(glob(os.path.join(_ROOT_DIR, d, '*.jpg')))
         image_files += files
         # read xml files and collect image elements
-        xml_path = glob(os.path.join(root, d, '*.xml'))[0]
+        xml_path = glob(os.path.join(_ROOT_DIR, d, '*.xml'))[0]
         root_element = elemTree.parse(xml_path)
         image_element = root_element.findall('./image')
         image_elements += image_element
@@ -71,6 +59,7 @@ def main():
         # create mask
         img = np.array(Image.open(filename))
         mask = create_mask(img, elem, label_divisor)
+        mask = Image.fromarray(mask)
         mask.save(mask_path)
         print('{}-th Mask is created and saved: {}'.format(i, mask_path))
         i += 1

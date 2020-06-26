@@ -38,18 +38,12 @@ class PanopticTargetGenerator(object):
         x0, y0 = 3 * sigma + 1, 3 * sigma + 1
         self.g = np.exp(- ((x - x0) ** 2 + (y - y0) ** 2) / (2 * sigma ** 2))
 
-    def __call__(self, panoptic, segments):
+    def __call__(self, panoptic, label_divisor):
         """Generates the training target.
         reference: https://github.com/mcordts/cityscapesScripts/blob/master/cityscapesscripts/preparation/createPanopticImgs.py
         reference: https://github.com/facebookresearch/detectron2/blob/master/datasets/prepare_panoptic_fpn.py#L18
         Args:
             panoptic: numpy.array, colored image encoding panoptic label.
-            segments: List, a list of dictionary containing information of every segment, it has fields:
-                - id: panoptic id, after decoding `panoptic`.
-                - category_id: semantic class id.
-                - area: segment area.
-                - bbox: segment bounding box.
-                - iscrowd: crowd region.
         Returns:
             A dictionary with fields:
                 - semantic: Tensor, semantic label, shape=(H, W).
@@ -82,24 +76,26 @@ class PanopticTargetGenerator(object):
         # (3) (Optional) It is stuff region (for offset branch)
         center_weights = np.zeros_like(panoptic, dtype=np.uint8)
         offset_weights = np.zeros_like(panoptic, dtype=np.uint8)
-        for seg in segments:
-            cat_id = seg["category_id"]
-            semantic[panoptic == seg["id"]] = cat_id
+
+        panoptic_ids = np.unique(panoptic)
+        for panoptic_id in panoptic_ids:
+            cat_id = panoptic_id // label_divisor
+            mask = panoptic == panoptic_id
+            semantic[mask] = cat_id
             if cat_id in self.thing_list:
-                foreground[panoptic == seg["id"]] = 1
-            if not seg['iscrowd']:
-                # Ignored regions are not in `segments`.
-                # Handle crowd region.
-                center_weights[panoptic == seg["id"]] = 1
-                if self.ignore_stuff_in_offset:
-                    # Handle stuff region.
-                    if cat_id in self.thing_list:
-                        offset_weights[panoptic == seg["id"]] = 1
-                else:
-                    offset_weights[panoptic == seg["id"]] = 1
+                foreground[mask] = 1
+            # Ignored regions are not in `segments`.
+            # Handle crowd region.
+            center_weights[mask] = 1
+            if self.ignore_stuff_in_offset:
+                # Handle stuff region.
+                if cat_id in self.thing_list:
+                    offset_weights[mask] = 1
+            else:
+                offset_weights[mask] = 1
             if cat_id in self.thing_list:
                 # find instance center
-                mask_index = np.where(panoptic == seg["id"])
+                mask_index = np.where(mask)
                 if len(mask_index[0]) == 0:
                     # the instance is completely cropped
                     continue
@@ -107,7 +103,7 @@ class PanopticTargetGenerator(object):
                 # Find instance area
                 ins_area = len(mask_index[0])
                 if ins_area < self.small_instance_area:
-                    semantic_weights[panoptic == seg["id"]] = self.small_instance_weight
+                    semantic_weights[mask] = self.small_instance_weight
 
                 center_y, center_x = np.mean(mask_index[0]), np.mean(mask_index[1])
 
@@ -163,27 +159,23 @@ class SemanticTargetGenerator(object):
         self.ignore_label = ignore_label
         self.rgb2id = rgb2id
 
-    def __call__(self, panoptic, segments):
+    def __call__(self, panoptic, label_divisor):
         """Generates the training target.
         reference: https://github.com/mcordts/cityscapesScripts/blob/master/cityscapesscripts/preparation/createPanopticImgs.py
         reference: https://github.com/facebookresearch/detectron2/blob/master/datasets/prepare_panoptic_fpn.py#L18
         Args:
             panoptic: numpy.array, colored image encoding panoptic label.
-            segments: List, a list of dictionary containing information of every segment, it has fields:
-                - id: panoptic id, after decoding `panoptic`.
-                - category_id: semantic class id.
-                - area: segment area.
-                - bbox: segment bounding box.
-                - iscrowd: crowd region.
         Returns:
             A dictionary with fields:
                 - semantic: Tensor, semantic label, shape=(H, W).
         """
         panoptic = self.rgb2id(panoptic)
         semantic = np.zeros_like(panoptic, dtype=np.uint8) + self.ignore_label
-        for seg in segments:
-            cat_id = seg["category_id"]
-            semantic[panoptic == seg["id"]] = cat_id
+
+        panoptic_ids = np.unique(panoptic)
+        for panoptic_id in panoptic_ids:
+            cat_id = panoptic_id // label_divisor
+            semantic[panoptic == panoptic_id] = cat_id
 
         return dict(
             semantic=torch.as_tensor(semantic.astype('long'))

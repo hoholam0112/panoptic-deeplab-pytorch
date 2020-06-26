@@ -12,7 +12,7 @@ import sys
 
 # Custom libs
 from transforms import build_transforms, PanopticTargetGenerator, SemanticTargetGenerator
-from utils import rgb2id, id2rgb, decode_polygon, encode_polygon
+from utils import rgb2id, id2rgb, decode_polygon
 
 # 21 classes. background = 0
 _class_name_to_id = {'sidewalk_blocks' : 1, 'alley_damaged' : 2, 'sidewalk_damaged' : 3,
@@ -72,6 +72,7 @@ class BaseDataset(object):
             small_instance_weight: Integer, indicates semantic loss weights for small instances.
         """
         self.root = root
+        self.mask_dir = root + '_mask'
         self.training = training # If training=False, target is None.
         self.crop_h, self.crop_w = crop_size
         self.mirror = mirror
@@ -90,17 +91,23 @@ class BaseDataset(object):
         self.id2rgb = id2rgb
 
         self.image_files = [] # list of file names
-        self.image_elements = [] # image element in xml file
         for d in sorted(os.listdir(self.root)):
             # collect image files
             files = sorted(glob(os.path.join(self.root, d, '*.jpg')))
             self.image_files += files
-            if self.training:
-                # read xml files and collect image elements
-                xml_path = glob(os.path.join(self.root, d, '*.xml'))[0]
-                root_element = elemTree.parse(xml_path)
-                image_elements = root_element.findall('./image')
-                self.image_elements += image_elements
+
+        if self.training:
+            if os.path.exists(self.mask_dir):
+                raise FileNotFoundError('Mask directory is not found: {}'.format(self.mask_dir))
+            self.mask_files = [] # mask file list 
+            for d in sorted(os.listdir(self.mask_dir)):
+                # collect image files
+                files = sorted(glob(os.path.join(self.mask_dir, d, '*.png')))
+                self.image_files += files
+
+            if len(self.image_files) != len(self.mask_files):
+                raise RuntimeError('''number of mask files is different from that of image files.
+                        Please excute mask_generate.py until finished.''')
 
         # Define transforms
         self.transform = build_transforms(self, training)
@@ -134,39 +141,16 @@ class BaseDataset(object):
             sample['image'] = img
             return sample
 
-        # Read label
-        img_elem = self.image_elements[idx]
-        #print(img_path)
-        #print(img_elem.attrib['name'])
-        segments = []
-        label = np.zeros_like(img, dtype=np.uint8)
-        instance_id = 12345
-        for polygon_elem in img_elem.findall('./polygon'):
-            seg = {}
-            # Read and process class_name
-            class_name = polygon_elem.attrib['label']
-            if class_name != 'bike_lane': # class 'bike_lane' has no attribute
-                if len(polygon_elem.findall('attribute')) == 0: # Exception handling
-                    continue
-                class_name += '_'+polygon_elem.findall('attribute')[0].text
-            seg['category_id'] = class_name_to_id(class_name)
-            # Read and decode polygon string to np.array
-            polygon_str = polygon_elem.attrib['points']
-            points = decode_polygon(polygon_str)
-            # Encode instance id
-            seg['id'] = seg['category_id']*_LABEL_DIVISOR + instance_id
-            rgb = id2rgb(instance_id) # encode instance id to RGB value 
-            cv2.fillPoly(label, [points], rgb) # assing RGB value to label 
-            instance_id += 1
-            # Append seg to segments
-            seg['iscrowd'] = False
-            segments.append(seg)
+        # read mask
+        mask_path = self.mask_files[idx]
+        assert os.path.exists(mask_path), 'Cannot find mask file: {}'.format(mask_path)
+        mask = Image.open(mask_path).convert('RGB')
 
-        img, label = self.transform(img, label)
+        img, label = self.transform(img, mask)
         sample['image'] = img
         # Generate training target.
         if self.target_transform is not None:
-            label_dict = self.target_transform(label, segments)
+            label_dict = self.target_transform(label, mask, _LABEL_DIVISOR)
             sample.update(label_dict)
         return sample
 
