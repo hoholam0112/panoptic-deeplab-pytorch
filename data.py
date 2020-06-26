@@ -15,7 +15,7 @@ from transforms import build_transforms, PanopticTargetGenerator, SemanticTarget
 from utils import rgb2id, id2rgb, decode_polygon, encode_polygon
 
 # 21 classes. background = 0
-_class_name_to_id = {'sidewalk_blocks' : 1, 'alley_damaged' : 2, 'sidewalk_damaged' : 3,
+_CLASS_NAME_TO_ID = {'sidewalk_blocks' : 1, 'alley_damaged' : 2, 'sidewalk_damaged' : 3,
              'caution_zone_manhole': 4, 'braille_guide_blocks_damaged':5, 'alley_speed_bump':6,
              'roadway_crosswalk':7,'sidewalk_urethane':8, 'caution_zone_repair_zone':9,
              'sidewalk_asphalt':10, 'sidewalk_other':11, 'alley_crosswalk':12,
@@ -23,15 +23,14 @@ _class_name_to_id = {'sidewalk_blocks' : 1, 'alley_damaged' : 2, 'sidewalk_damag
              'bike_lane':16, 'caution_zone_stairs':17, 'alley_normal':18,
              'sidewalk_cement':19,'braille_guide_blocks_normal':20, 'sidewalk_soil_stone': 21}
 
-_class_id_to_name = {v:k for k,v in _class_name_to_id.items()}
-
-_ROAD_CONDITION_THINGS_LIST = sorted(list(_class_name_to_id.values()))
+_CLASS_ID_TO_NAME = {v:k for k,v in _CLASS_NAME_TO_ID.items()}
+_ROAD_CONDITION_THINGS_LIST = sorted(list(_CLASS_NAME_TO_ID.values()))
 
 def class_name_to_id(class_name):
-    return _class_name_to_id[class_name]
+    return _CLASS_NAME_TO_ID[class_name]
 
 def class_id_to_name(class_id):
-    return _class_id_to_name[class_id]
+    return _CLASS_ID_TO_NAME[class_id]
 
 def get_thing_list():
     return _ROAD_CONDITION_THINGS_LIST
@@ -41,7 +40,7 @@ class BaseDataset(object):
     def __init__(self,
                  root,
                  training=True,
-                 crop_size=(513, 1025),
+                 crop_size=(1081, 1921),
                  mirror=True,
                  min_scale=0.5,
                  max_scale=2.,
