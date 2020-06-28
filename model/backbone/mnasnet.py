@@ -271,9 +271,17 @@ def mnasnet1_3(pretrained=False, progress=True, **kwargs):
 if __name__ == '__main__':
     import torch
 
-    model = mnasnet0_5(pretrained=False)
+    #model = mnasnet0_5(pretrained=False)
+    #print(model)
+    #data = torch.zeros(1, 3, 224, 224)
+    #results = model.forward(data)
+
+    #for key in results.keys():
+    #    print(key, results[key].size())
+
+    model = mnasnet1_3(pretrained=False)
     print(model)
-    data = torch.zeros(1, 3, 224, 224)
+    data = torch.zeros(1, 3, 512, 512)
     results = model.forward(data)
 
     for key in results.keys():

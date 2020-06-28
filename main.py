@@ -33,6 +33,16 @@ def load(checkpoint, model, optimizer=None, lr_scheduler=None):
     if lr_scheduler:
         lr_scheduler.load_state_dict(checkpoint['lr_scheduler_state_dict'])
 
+def get_lr(cfg, optimizer, step):
+    """ get learning for this step """
+    if step < 30000:
+        optimizer.param_groups[0]['lr'] = cfg.SOLVER.BASE_LR
+    elif step >= 30000 and step < 60000:
+        optimizer.param_groups[0]['lr'] = cfg.SOLVER.BASE_LR*0.1
+    else:
+        optimizer.param_groups[0]['lr'] = cfg.SOLVER.BASE_LR*0.01
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Panoptic Deeplab for road condition recognition.')
     parser.add_argument('--root_dir', help='root directory of dataset.', required=True)
@@ -161,6 +171,7 @@ if __name__ == '__main__':
                 loss.backward()
                 optimizer.step()
                 #lr_scheduler.step()
+                get_lr(cfg, optimizer, step)
 
                 elapsed_time = time.time() - start_time # check elaped time
                 time_meter.update(elapsed_time)
