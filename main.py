@@ -328,15 +328,12 @@ if __name__ == '__main__':
                 points_str = points_to_str(ins['points'])
                 xml_predict.attrib['polygon'] = points_str
                 xml_predict.attrib['score'] = str(float(ins['score']))
-                if j == len(ins_list) - 1:
-                    xml_predict.tail = '\n  '
+            xml_predict.tail = '\n  '
             xml_image.tail = '\n  '
-            if i == len(dataset) - 1:
-                xml_image.tail = '\n'
-
             elapsed_time = time.time() - start_time
             print('\r{:05d}/{:05d} -- {:d}s'.format(i+1, len(dataset), int(elapsed_time)), end='')
         print('')
+        xml_image.tail = '\n'
 
         pred_xml = elemTree.ElementTree(pred_xml)
         split = root_dir.split('/')[-1]
