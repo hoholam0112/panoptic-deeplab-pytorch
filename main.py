@@ -253,9 +253,12 @@ if __name__ == '__main__':
                 batch = next(iterator)
                 # Copy tensors to device
                 image = batch['image'].to(device)
-                target_keys = ['semantic', 'semantic_weights',
-                               'center', 'center_weights',
-                               'offset', 'offset_weights']
+                if cfg.DATASET.SEMANTIC_ONLY:
+                    target_keys = ['semantic']
+                else:
+                    target_keys = ['semantic', 'semantic_weights',
+                                   'center', 'center_weights',
+                                   'offset', 'offset_weights']
                 targets = {k : batch[k].to(device) for k in target_keys}
 
                 # forward pass
