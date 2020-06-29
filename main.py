@@ -135,11 +135,11 @@ class InstanceDetector:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Panoptic Deeplab for road condition recognition.')
-    parser.add_argument('--root_dir', help='root directory of dataset.', required=True)
-    parser.add_argument('--config_file', help='.yaml file path for configuration.')
+    parser.add_argument('--root_dir', help='root directory of dataset. e.g) ./dataset/train', required=True)
+    parser.add_argument('--config_file', help='.yaml file path for configuration. See ./configs')
     parser.add_argument('--resume', help='whether to resume train.', action='store_true')
     parser.add_argument('--test', help='whether to train or test.', action='store_true')
-    parser.add_argument('--step_ckp', help='step number of checkpoint.', action='store_true')
+    parser.add_argument('--step_ckp', help='step number of checkpoint.', type=int)
     args = parser.parse_args()
 
     root_dir = args.root_dir
