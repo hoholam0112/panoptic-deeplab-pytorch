@@ -183,9 +183,10 @@ if __name__ == '__main__':
     if len(save_list) == 0:
         save_path += '-0.pt'
     else:
-        save_path = sorted(save_list)[-1] # Load latest checkpoint
         if step_ckp:
             save_path += '-{:05d}.pt'.format(step_ckp)
+        else:
+            save_path = sorted(save_list)[-1] # Load latest checkpoint
 
     checkpoint = None
     if training:
