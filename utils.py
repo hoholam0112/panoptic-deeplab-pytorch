@@ -1,4 +1,5 @@
 import numpy as np
+import cv2
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -142,8 +143,8 @@ class NoiseRemover():
     def __call__(self, mask):
         kernel = np.ones((7,7),np.uint8)
         mask_erode = cv2.erode(
-		mask.astype(np.uint8), kernel, iterations=self.erode_iter)
+		mask.astype(np.uint8), self.kernel, iterations=self.erode_iter)
         mask_process = cv2.dilate(
-		mask_erode, kernel, iterations=self.dilate_iter)
+		mask_erode, self.kernel, iterations=self.dilate_iter)
         mask_process = mask_process.astype(np.bool)
         return mask_process

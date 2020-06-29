@@ -119,7 +119,7 @@ class BaseDataset(object):
         image = cv2.resize(image.astype(np.float),
                 (self.crop_w, self.crop_h), interpolation=cv2.INTER_LINEAR)
         if label is None:
-            return image, label
+            return image.astype(image_dtype), label
         label_dtype = label.dtype
         label = cv2.resize(label.astype(np.float),
                 (self.crop_w, self.crop_h), interpolation=cv2.INTER_NEAREST)

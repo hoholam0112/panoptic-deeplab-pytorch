@@ -5,8 +5,10 @@ import numpy as np
 import random
 import glob
 from torch.utils.tensorboard import SummaryWriter
-from imantics import Mask
+from imantics import Polygons
 import xml.etree.ElementTree as elemTree
+import torch.nn.functional as F
+import cv2
 
 # Custom libs
 from config import get_default_config
@@ -78,7 +80,7 @@ class InstanceDetector:
             cv2.fillPoly(ins_mask, [points], 255)
             ins_mask_area = np.sum(ins_mask != 0)
             # Remove false positive detections in background
-            if np.sum(class_mask*ins_mask) < int(ins_mask_area * 0.5):
+            if np.sum(class_mask*ins_mask.astype(np.bool)) < int(ins_mask_area * 0.5):
                 continue
             if ins_mask_area > min_area:
                 yield ins_mask, points
@@ -115,8 +117,8 @@ class InstanceDetector:
                 instance = {}
                 instance['class_name'] = class_id_to_name(cat_id)
                 # Compute confidence score
-                ins_mask_tensor = torch.tensor(ins_mask_tensor, dtype=torch.bool).to(self.device)
-                score_sum = torch.sum(sem_pred[:, cat_id, :, :]*ins_mask_tensor)
+                ins_mask_tensor = torch.tensor(ins_mask, dtype=torch.bool).to(self.device)
+                score_sum = torch.sum(sem_pred[cat_id, :, :]*ins_mask_tensor)
                 score_mean = score_sum/torch.sum(ins_mask_tensor)
                 instance['score'] = score_mean.item()
                 # scale points to raw size
@@ -319,8 +321,6 @@ if __name__ == '__main__':
                 xml_predict = elemTree.SubElement(xml_image, 'predict')
                 xml_predict.tail = '\n    '
                 xml_predict.attrib['class_name'] = ins['class_name']
-                mask = ins['mask']
-                print(mask.shape)
                 # binary mask to polygons
                 points_str = points_to_str(ins['points'])
                 xml_predict.attrib['polygon'] = points_str
