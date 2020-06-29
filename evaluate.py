@@ -10,7 +10,6 @@ import time
 import math
 import xml.etree.ElementTree as elemTree
 import numpy as np
-sys.path.append('/home/centos/anaconda3/envs/sh/lib')
 from imantics import Polygons, Mask
 from shapely.geometry import Polygon
 
@@ -241,11 +240,11 @@ def evaluation_metrics(GT_PATH, DR_PATH):
 
 def main() :
     args = argparse.ArgumentParser()
-    args.add_argument("--prediction_file", type=str, default= "predictions/prediction2.xml")
+    args.add_argument("--prediction_file", help='prediction xml file path. see ./predictions', type=str)
+    args.add_argument("--root_dir.", help='ground truth root directory.', type=str)
     config = args.parse_args()
 
-
-    GT_PATH = os.path.join(os.getcwd(), 'Surface_1')
+    GT_PATH = config.root_dir
     DR_PATH = config.prediction_file
     print(evaluation_metrics(GT_PATH, DR_PATH))
 
