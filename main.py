@@ -12,8 +12,8 @@ import xml.etree.ElementTree as elemTree
 from config import get_default_config
 from data import BaseDataset, get_thing_list, class_id_to_name
 from model import build_segmentation_model_from_cfg
-from utils import AverageMeter, get_image_id, points_to_str
-from post_processing import get_ins_list
+from utils import AverageMeter, get_image_id, points_to_str, NoiseRemover
+from post_processing import get_semantic_segmentation
 
 def save(save_path, model, optimizer, lr_scheduler, step):
     """ save training state as checkpoint file """
@@ -41,6 +41,94 @@ def get_lr(cfg, optimizer, step):
         optimizer.param_groups[0]['lr'] = cfg.SOLVER.BASE_LR*0.1
     else:
         optimizer.param_groups[0]['lr'] = cfg.SOLVER.BASE_LR*0.01
+
+class InstanceDetector:
+    """ Instance detector """
+    def __init__(self,
+                 device,
+                 num_classes=22,
+                 ignore_label=0,
+                 min_instance_area=0.02,
+                 remover_kernel_size=7,
+                 erode_iter=1,
+                 dilate_iter=3):
+        """ initialize an instance detector """
+        self.device = device
+        self.num_classes = num_classes
+        self.ignore_label = ignore_label
+        self.min_instance_area = min_instance_area
+        self.noise_remover = NoiseRemover(
+                remover_kernel_size, erode_iter, dilate_iter)
+
+    def detect_polygons(self, class_mask, min_area):
+        """ Detect polygons from binary mask whose area is greater than min_area.
+        Args:
+            class_mask: np.array of shape [H, W]. mask of specific class
+
+        Yields:
+            ins_mask: np.array of the same shape with mask. detected instance mask
+            points: np.array of shape (N, 2) sequeze of points.
+        """
+        points_list = Polygons.from_mask(class_mask)
+        for points in points_list:
+            points = np.array([[points[2*i], points[2*i+1]] for i in range(len(points)//2)])
+            if points.shape[0] < 3:
+                continue
+            ins_mask = np.zeros_like(class_mask, dtype=np.uint8)
+            cv2.fillPoly(ins_mask, [points], 255)
+            ins_mask_area = np.sum(ins_mask != 0)
+            # Remove false positive detections in background
+            if np.sum(class_mask*ins_mask) < int(ins_mask_area * 0.5):
+                continue
+            if ins_mask_area > min_area:
+                yield ins_mask, points
+
+    def __call__(self, sem_pred, raw_size):
+        """ detect instances. Returns list of dict(class_id=int, points=np.array, score=float)
+        Args:
+            sem_pred (tensor of shape [1, K, H, W]): semantic segmentation prediction
+            raw_size (tuple of int): (width, height). raw image size points is re-scaled to raw_size.
+        """
+        assert sem_pred.dim() == 4 and sem_pred.size(0) == 1
+        # assign semantic label
+        sem_hard = get_semantic_segmentation(sem_pred)
+        sem_pred = F.softmax(sem_pred, dim=1)
+        sem_hard.squeeze_(0)
+        sem_pred.squeeze_(0)
+        # Define minimal area size for instance
+        w_raw, h_raw = raw_size
+        h, w, _ = sem_pred.shape
+        total_area = h*w
+        min_instance_area = int(self.min_instance_area * total_area)
+        ins_list = []
+        for cat_id in range(self.num_classes):
+            if cat_id == self.ignore_label:
+                continue
+            class_mask = (sem_hard == cat_id)
+            class_mask_numpy = class_mask.cpu().numpy()
+            cat_area = torch.sum(class_mask).item()
+            if cat_area < min_instance_area:
+                continue
+            # Remove noisy part and smoothing mask
+            mask_denoised = self.noise_remover(class_mask_numpy)
+            for ins_mask, points in self.detect_polygons(mask_denoised, min_instance_area):
+                instance = {}
+                instance['class_name'] = class_id_to_name(cat_id)
+                # Compute confidence score
+                ins_mask_tensor = torch.tensor(ins_mask_tensor, dtype=torch.bool).to(self.device)
+                score_sum = torch.sum(sem_pred[:, cat_id, :, :]*ins_mask_tensor)
+                score_mean = score_sum/torch.sum(ins_mask_tensor)
+                instance['score'] = score_mean.item()
+                # scale points to raw size
+                w_factor = (w_raw-1)/float(w-1)
+                h_factor = (h_raw-1)/float(h-1)
+                points_scale = np.zeros_like(points)
+                for i in range(points.shape[0]):
+                    points_scale[i, 0] = int(h_factor*points[i, 0])
+                    points_scale[i, 1] = int(w_factor*points[i, 1])
+                instance['points'] = points_scale
+                ins_list.append(instance)
+        return ins_list
 
 
 if __name__ == '__main__':
