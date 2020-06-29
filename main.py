@@ -139,12 +139,14 @@ if __name__ == '__main__':
     parser.add_argument('--config_file', help='.yaml file path for configuration.')
     parser.add_argument('--resume', help='whether to resume train.', action='store_true')
     parser.add_argument('--test', help='whether to train or test.', action='store_true')
+    parser.add_argument('--step_ckp', help='step number of checkpoint.', action='store_true')
     args = parser.parse_args()
 
     root_dir = args.root_dir
     config_file = args.config_file
     resume = args.resume
     test = args.test
+    step_ckp = args.step_ckp
 
     # Load and update configuration 
     cfg = get_default_config()
@@ -181,7 +183,9 @@ if __name__ == '__main__':
     if len(save_list) == 0:
         save_path += '-0.pt'
     else:
-        save_path = sorted(save_list)[-1]
+        save_path = sorted(save_list)[-1] # Load latest checkpoint
+        if step_ckp:
+            save_path += '-{:05d}.pt'.format(step_ckp)
 
     checkpoint = None
     if training:
