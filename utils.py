@@ -31,10 +31,10 @@ def decode_polygon(polygon_str):
     return np.array(seq)
 
 def points_to_str(points):
-    """ encode point list to as a string """
+    """ encode points (np.array of shape [N, 2]) as a string """
     polygon_str = ''
-    for p in points:
-        polygon_str += str(p[0]) + ',' + str(p[1]) +';'
+    for i in range(points.shape[0]):
+        polygon_str += str(points[i, 0]) + ',' + str(points[i, 1]) +';'
     return polygon_str
 
 def rgb2id(color):

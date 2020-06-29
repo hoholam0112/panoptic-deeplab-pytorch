@@ -87,7 +87,7 @@ class InstanceDetector:
         """ detect instances. Returns list of dict(class_id=int, points=np.array, score=float)
         Args:
             sem_pred (tensor of shape [1, K, H, W]): semantic segmentation prediction
-            raw_size (tuple of int): (width, height). raw image size points is re-scaled to raw_size.
+            raw_size (tuple of int): (height, width). raw image size points is re-scaled to raw_size.
         """
         assert sem_pred.dim() == 4 and sem_pred.size(0) == 1
         # assign semantic label
@@ -96,7 +96,7 @@ class InstanceDetector:
         sem_hard.squeeze_(0)
         sem_pred.squeeze_(0)
         # Define minimal area size for instance
-        w_raw, h_raw = raw_size
+        h_raw, w_raw = raw_size
         h, w, _ = sem_pred.shape
         total_area = h*w
         min_instance_area = int(self.min_instance_area * total_area)
@@ -287,6 +287,14 @@ if __name__ == '__main__':
         writer.close()
     else: # Test
         load(checkpoint, model) # Load saved model
+        # Create instance detector object
+        detector = InstanceDetector(device,
+                                    num_classes=cfg.DATASET.NUM_CLASSES,
+                                    ignore_label=0,
+                                    min_instance_area=0.02,
+                                    remover_kernel_size=7,
+                                    erode_iter=1,
+                                    dilate_iter=3)
         pred_xml = elemTree.Element('predictions') # .xml file to save prediction
         pred_xml.text = '\n  '
         model.eval()
@@ -295,17 +303,8 @@ if __name__ == '__main__':
             with torch.no_grad():
                 image = batch['image'].to(device)
                 output = model(image)
-
-                # Get instance list
-                ins_list = get_ins_list(
-                        sem_pred=output['semantic'].to(device),
-                        center_pred=output['center'].to(device),
-                        offset_pred=output['offset'].to(device),
-                        thing_list=get_thing_list(),
-                        threshold=cfg.POST_PROCESSING.CENTER_THRESHOLD,
-                        nms_kernel=cfg.POST_PROCESSING.NMS_KERNEL,
-                        top_k=cfg.POST_PROCESSING.TOP_K_INSTANCE
-                    )
+                h, w = list(batch['raw_size'].squeeze(0).numpy())
+                ins_list = detector(output['semantic'].to(device), raw_size=(h, w))
 
             idx = batch['dataset_index'].squeeze(0).item()
             image_id = get_image_id(dataset.image_files[idx])
@@ -319,12 +318,11 @@ if __name__ == '__main__':
                 # Creatae sub-element predict 
                 xml_predict = elemTree.SubElement(xml_image, 'predict')
                 xml_predict.tail = '\n    '
-                xml_predict.attrib['class_name'] = class_id_to_name(ins['class_id'])
+                xml_predict.attrib['class_name'] = ins['class_name']
                 mask = ins['mask']
                 print(mask.shape)
                 # binary mask to polygons
-                points = Mask(mask).polygons().points[0]
-                points_str = points_to_str(points)
+                points_str = points_to_str(ins['points'])
                 xml_predict.attrib['polygon'] = points_str
                 xml_predict.attrib['score'] = str(float(ins['score']))
                 if j == len(ins_list) - 1:
