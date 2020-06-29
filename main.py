@@ -124,8 +124,8 @@ class InstanceDetector:
                 h_factor = (h_raw-1)/float(h-1)
                 points_scale = np.zeros_like(points)
                 for i in range(points.shape[0]):
-                    points_scale[i, 0] = int(h_factor*points[i, 0])
-                    points_scale[i, 1] = int(w_factor*points[i, 1])
+                    points_scale[i, 0] = int(w_factor*points[i, 0])
+                    points_scale[i, 1] = int(h_factor*points[i, 1])
                 instance['points'] = points_scale
                 ins_list.append(instance)
         return ins_list
