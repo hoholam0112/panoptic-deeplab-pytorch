@@ -99,7 +99,7 @@ class InstanceDetector:
         sem_pred.squeeze_(0)
         # Define minimal area size for instance
         h_raw, w_raw = raw_size
-        h, w, _ = sem_pred.shape
+        _, h, w  = sem_pred.shape
         total_area = h*w
         min_instance_area = int(self.min_instance_area * total_area)
         ins_list = []
@@ -310,7 +310,6 @@ if __name__ == '__main__':
 
             idx = batch['dataset_index'].squeeze(0).item()
             image_id = get_image_id(dataset.image_files[idx])
-            print(image_id)
             # Create sub-element image 
             xml_image = elemTree.SubElement(pred_xml, 'image')
             xml_image.attrib['name'] = image_id

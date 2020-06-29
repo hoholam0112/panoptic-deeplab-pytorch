@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+import torch
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -125,6 +126,7 @@ def color_mask(cat_id, mask):
     """ Colorize segmentation mask """
     colormap = create_label_colormap()
     r, g, b = colormap[cat_id]
+    h, w = mask.shape
     mask_color = np.zeros([h, w, 3], dtype=np.uint8)
     mask_color[:,:,0][mask] = r
     mask_color[:,:,1][mask] = g
