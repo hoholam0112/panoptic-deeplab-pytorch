@@ -191,7 +191,7 @@ _C.TRAIN.RESUME = False
 _C.TEST = CN()
 
 _C.TEST.GPUS = (0, )
-_C.TEST.CROP_SIZE = (1081, 1921)
+_C.TEST.IMAGE_SIZE = (1080, 1920)
 
 # -----------------------------------------------------------------------------
 # POST PROCESSING
